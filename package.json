@@ -1,60 +1,68 @@
 {
-  "name": "@dwmt/comlink",
-  "version": "1.0.0",
-  "description": "Communication library for lazy enthusiasts",
-  "main": "index.js",
-  "scripts": {
-    "test": "npx mocha test/**/*.test.js",
-    "test:watch": "npx mocha test/**/*.test.js --watch",
-    "coverage": "npx nyc npm run test",
-    "report-coverage": " npx nyc --reporter=lcov npm run test"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/dwmt/comlink.git"
-  },
-  "keywords": [
-    "comlink",
-    "communication",
-    "http",
-    "https",
-    "rest",
-    "ws",
-    "websockets",
-    "channels"
-  ],
-  "contributors": [
-    {
-      "name": "Lajos Kovács",
-      "email": "lajoskvcs@icloud.com",
-      "url": "https://lajoskvcs.com"
-    },
-    {
-      "name": "Gergely Szabó",
-      "email": "gergely0116@gmail.com",
-      "url": "https://github.com/Baxi0116"
-    }
-  ],
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/dwmt/comlink/issues"
-  },
-  "homepage": "https://github.com/dwmt/comlink#readme",
-  "dependencies": {
-    "axios": "^0.19.0"
-  },
-  "devDependencies": {
-    "chai": "^4.2.0",
-    "codacy-coverage": "^3.4.0",
-    "codecov": "^3.6.1",
-    "eslint": "^6.5.1",
-    "eslint-config-standard": "^14.1.0",
-    "eslint-plugin-import": "^2.18.2",
-    "eslint-plugin-node": "^10.0.0",
-    "eslint-plugin-promise": "^4.2.1",
-    "eslint-plugin-standard": "^4.0.1",
-    "mocha": "^6.2.1",
-    "nyc": "^14.1.1",
-    "sinon": "^7.5.0"
-  }
+	"name": "@dwmt/comlink",
+	"version": "1.0.2",
+	"description": "Communication library for lazy enthusiasts",
+	"main": "dist/Comlink.js",
+	"module": "dist/Comlink.esm.js",
+	"scripts": {
+		"prepublish": "npx bili --format esm --format cjs",
+		"dev": "npx bili --watch --format esm --format cjs",
+		"test": "npx mocha test/**/*.test.js",
+		"test:watch": "npx mocha test/**/*.test.js --watch",
+		"coverage": "npx nyc npm run test",
+		"report-coverage": " npx nyc --reporter=lcov npm run test"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dwmt/comlink.git"
+	},
+	"keywords": [
+		"comlink",
+		"communication",
+		"http",
+		"https",
+		"rest",
+		"ws",
+		"websockets",
+		"channels"
+	],
+	"contributors": [
+		{
+			"name": "Lajos Kovács",
+			"email": "lajoskvcs@icloud.com",
+			"url": "https://lajoskvcs.com"
+		},
+		{
+			"name": "Gergely Szabó",
+			"email": "gergely0116@gmail.com",
+			"url": "https://github.com/Baxi0116"
+		}
+	],
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/dwmt/comlink/issues"
+	},
+	"homepage": "https://github.com/dwmt/comlink#readme",
+	"dependencies": {
+		"@dwmt/loader": "^1.0.0",
+		"axios": "^0.19.0",
+		"isomorphic-ws": "^4.0.1",
+		"js-cookie": "^2.2.1",
+		"ws": "^7.2.1"
+	},
+	"devDependencies": {
+		"bili": "^4.8.1",
+		"chai": "^4.2.0",
+		"codacy-coverage": "^3.4.0",
+		"codecov": "^3.6.1",
+		"eslint": "^6.5.1",
+		"eslint-config-standard": "^14.1.0",
+		"eslint-plugin-import": "^2.18.2",
+		"eslint-plugin-node": "^10.0.0",
+		"eslint-plugin-promise": "^4.2.1",
+		"eslint-plugin-standard": "^4.0.1",
+		"mocha": "^6.2.1",
+		"nyc": "^14.1.1",
+		"sinon": "^7.5.0"
+	}
 }
