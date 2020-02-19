@@ -55,33 +55,42 @@ function wsStrategy (options) {
     alive: false,
     answers: {},
     connect: function () {
-			if (self._channels[options.name].connection !== null) {
-				return
-			}
-      const opts = []
-      if (options.auth) {
-        const headerObject = self.getHeader(options.authHeader)
-        opts.push(headerObject.value)
-      }
-      const ws = new WebSocket(channel.protocol + channel.uri, opts)
-      self._channels[options.name].connection = ws
-      ws.addEventListener('open', () => { self._channels[options.name].alive = true })
-      ws.addEventListener('close', () => { self._channels[options.name].alive = false })
-      ws.addEventListener('error', () => { self._channels[options.name].alive = false })
-
-      if (options.rpc) {
-        ws.addEventListener('message', function (msg) {
-          try {
-            const tr = JSON.parse(msg.data)
-            console.log(`Socket message on channel ${opts.name}`, tr)
-            if (tr.id) {
-              self._channels[options.name].answers[tr.id] = tr.result || { error: tr.error }
-            }
-          } catch (err) {
-            console.error(err)
-          }
-        })
-      }
+			return new Promise ((resolve, reject) => {
+				if (self._channels[options.name].connection !== null) {
+					return resolve()
+				}
+				const opts = []
+				if (options.auth) {
+					const headerObject = self.getHeader(options.authHeader)
+					opts.push(headerObject.value)
+				}
+				const ws = new WebSocket(channel.protocol + channel.uri, opts)
+				self._channels[options.name].connection = ws
+				ws.addEventListener('open', () => {
+					self._channels[options.name].alive = true
+					console.log('Connection established')
+					resolve()
+				})
+				ws.addEventListener('close', () => { self._channels[options.name].alive = false })
+				ws.addEventListener('error', () => {
+					self._channels[options.name].alive = false
+					reject()
+				})
+	
+				if (options.rpc) {
+					ws.addEventListener('message', function (msg) {
+						try {
+							const tr = JSON.parse(msg.data)
+							console.log(`Socket message on channel ${opts.name}`, tr)
+							if (tr.id) {
+								self._channels[options.name].answers[tr.id] = tr.result || { error: tr.error }
+							}
+						} catch (err) {
+							console.error(err)
+						}
+					})
+				}
+			})
     }
   }
   return channel
@@ -313,7 +322,9 @@ export default class Client {
     const optioner = dialect.optioner(options)
 
     message = Object.assign({}, message, dialect.interface, router, parameter, optioner)
-
+		if (channel.connection === null) {
+			await channel.connect()
+		}
     channel.connection.send(JSON.stringify(message))
 
     const answer = await retry(() => new Promise((resolve, reject) => {
