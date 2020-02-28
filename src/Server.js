@@ -25,16 +25,16 @@ export default class Server {
       throw new Error(`Channel with name ${channelName} is not registered!`)
     }
     wss.on('connection', async (ws, req) => {
-			if (channel.auth) {
-				console.log('Authenticating ws connection')
-				if (!req.headers['sec-websocket-protocol'] || req.headers['sec-websocket-protocol'].length === 0) {
-					return ws.close()
-				}
-				let check = channel.tokenValidator(req.headers['sec-websocket-protocol'])
-				if (!check) {
-					return ws.close()
-				}
-			}
+      if (channel.auth) {
+        console.log('Authenticating ws connection')
+        if (!req.headers['sec-websocket-protocol'] || req.headers['sec-websocket-protocol'].length === 0) {
+          return ws.close()
+        }
+        let check = channel.tokenValidator(req.headers['sec-websocket-protocol'])
+        if (!check) {
+          return ws.close()
+        }
+      }
       ws.on('message', async (message) => {
         const parsed = JSON.parse(message)
         const dialect = parsed._dialect
@@ -58,7 +58,7 @@ export default class Server {
         } catch (err) {
           ws.send(JSON.stringify({
             id,
-            error: err
+            error: err.message
           }))
         }
       })
