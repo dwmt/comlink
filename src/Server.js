@@ -1,8 +1,11 @@
+import generateUUID from './util/uuid'
+
 export default class Server {
   constructor () {
     this._dialects = {}
     this._channels = {}
     this._clients = {}
+    this.session = {}
   }
 
   registerDialect (_dialect) {
@@ -25,6 +28,8 @@ export default class Server {
       throw new Error(`Channel with name ${channelName} is not registered!`)
     }
     wss.on('connection', async (ws, req) => {
+      let clientID = generateUUID()
+      this.session[clientID] = {}
       if (channel.auth) {
         console.log('Authenticating ws connection')
         if (!req.headers['sec-websocket-protocol'] || req.headers['sec-websocket-protocol'].length === 0) {
@@ -34,8 +39,11 @@ export default class Server {
         if (!check) {
           return ws.close()
         }
+        this.session[clientID].token = req.headers['sec-websocket-protocol']
+        ws.id = clientID
       }
       ws.on('message', async (message) => {
+        console.log('Incoming message from client: ' + ws.id)
         const parsed = JSON.parse(message)
         const dialect = parsed._dialect
         if (!dialect) {
@@ -49,16 +57,37 @@ export default class Server {
             error: `The used dialect ${dialect} is not supported on this channel`
           }))
         }
+				let headers = {}
+				if (channel.headerInjector) {
+					try {
+						let h = await channel.headerInjector(this.session[ws.id])
+						headers = Object.assign({}, h)
+					} catch (err) {
+						return ws.send(JSON.stringify({
+							id,
+							error: err.message,
+							headers: Object.assign({}, headers, {
+								serverTime: Date.now()
+							})
+						}))
+					}
+				}
         try {
           const returnValue = await this._dialects[dialect].onRequest(parsed)
           ws.send(JSON.stringify({
             id,
-            result: returnValue
+            result: returnValue,
+            headers: Object.assign({}, headers, {
+              serverTime: Date.now()
+            })
           }))
         } catch (err) {
           ws.send(JSON.stringify({
             id,
-            error: err.message
+            error: err.message,
+            headers: Object.assign({}, headers, {
+              serverTime: Date.now()
+            })
           }))
         }
       })

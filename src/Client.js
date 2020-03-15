@@ -1,15 +1,9 @@
 import axios from 'axios'
+import generateUUID from './util/uuid'
 const WebSocket = require('isomorphic-ws')
 
 const Loader = require('@dwmt/loader/lib/Loader')
 
-function generateUUID () {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    var r = Math.random() * 16 | 0
-    var v = c === 'x' ? r : (r & 0x3 | 0x8)
-    return v.toString(16)
-  })
-}
 
 const retry = (fn, ms = 1000, maxRetries = 10) => new Promise((resolve, reject) => {
   fn()
@@ -32,9 +26,10 @@ function httpStrategy (options) {
     default: options.default || false,
     rpc: options.rpc || undefined,
     onError: options.onError || function (err) { console.error(err) },
+    headerHandler: options.headerHandler || async function (headers) { return true },
     loader: options.loader || new Loader(),
-		logger: options.logger,
-		connectable: false
+    logger: options.logger,
+    connectable: false
   }
 }
 function wsStrategy (options) {
@@ -50,47 +45,50 @@ function wsStrategy (options) {
     onError: options.onError || function (err) { console.error(err) },
     loader: options.loader || new Loader(),
     logger: options.logger,
-		connection: null,
-		connectable: true,
+    connection: null,
+    connectable: true,
     alive: false,
     answers: {},
     connect: function () {
-			return new Promise ((resolve, reject) => {
-				if (self._channels[options.name].connection !== null) {
-					return resolve()
-				}
-				const opts = []
-				if (options.auth) {
-					const headerObject = self.getHeader(options.authHeader)
-					opts.push(headerObject.value)
-				}
-				const ws = new WebSocket(channel.protocol + channel.uri, opts)
-				self._channels[options.name].connection = ws
-				ws.addEventListener('open', () => {
-					self._channels[options.name].alive = true
-					console.log('Connection established')
-					resolve()
-				})
-				ws.addEventListener('close', () => { self._channels[options.name].alive = false })
-				ws.addEventListener('error', () => {
-					self._channels[options.name].alive = false
-					reject()
-				})
-	
-				if (options.rpc) {
-					ws.addEventListener('message', function (msg) {
-						try {
-							const tr = JSON.parse(msg.data)
-							console.log(`Socket message on channel ${opts.name}`, tr)
-							if (tr.id) {
-								self._channels[options.name].answers[tr.id] = tr.result || { error: tr.error }
-							}
-						} catch (err) {
-							console.error(err)
-						}
-					})
-				}
-			})
+      return new Promise ((resolve, reject) => {
+        if (self._channels[options.name].connection !== null) {
+          return resolve()
+        }
+        const opts = []
+        if (options.auth) {
+          const headerObject = self.getHeader(options.authHeader)
+          opts.push(headerObject.value)
+        }
+        const ws = new WebSocket(channel.protocol + channel.uri, opts)
+        self._channels[options.name].connection = ws
+        ws.addEventListener('open', () => {
+          self._channels[options.name].alive = true
+          console.log('Connection established')
+          resolve()
+        })
+        ws.addEventListener('close', () => { self._channels[options.name].alive = false })
+        ws.addEventListener('error', () => {
+          self._channels[options.name].alive = false
+          reject()
+        })
+  
+        if (options.rpc) {
+          ws.addEventListener('message', function (msg) {
+            try {
+              const tr = JSON.parse(msg.data)
+              console.log(`Socket message on channel ${opts.name}`, tr)
+              if (options.rpc && options.rpc.headerHandler) {
+                options.rpc.headerHandler(tr.headers || {})
+              }
+              if (tr.id) {
+                self._channels[options.name].answers[tr.id] = tr.result || { error: tr.error }
+              }
+            } catch (err) {
+              console.error(err)
+            }
+          })
+        }
+      })
     }
   }
   return channel
@@ -117,7 +115,7 @@ export default class Client {
     const channel = {}
 
     channel.name = this._channels[channelName].name
-		channel.alive = this._channels[channelName].alive
+    channel.alive = this._channels[channelName].alive
     if (this._channels[channelName].connectable) {
       channel.connection = this._channels[channelName].connection
       channel.connect = this._channels[channelName].connect
@@ -137,7 +135,7 @@ export default class Client {
   }
 
   registerHeader (header) {
-		this._headers[header.name] = header
+    this._headers[header.name] = header
   }
 
   registerChannel (channel) {
@@ -159,7 +157,7 @@ export default class Client {
       if (chn.default && chn.rpc) {
         this._deafultRPCChannel = chn.name
       }
-			this._channels[chn.name] = chn
+      this._channels[chn.name] = chn
     }
   }
 
@@ -206,9 +204,11 @@ export default class Client {
       if (pat.test(URI)) {
         url = URI
       }
-      const req = await axios.get(url, options.axios || {})
-      return req
+      const resp = await axios.get(url, options.axios || {})
+      await channel.headerHandler(resp.headers)
+      return resp
     } catch (err) {
+      await channel.headerHandler(err.response.headers)
       await errorHandler(err)
       throw err
     } finally {
@@ -220,8 +220,8 @@ export default class Client {
     const channelName = options.channel || this._deafultHTTPChannel
     const channel = this._channels[channelName]
     const loader = options.loader || channel.loader
-		const errorHandler = options.onError || channel.onError
-		
+    const errorHandler = options.onError || channel.onError
+    
     const loaderID = loader.work()
     try {
       let url = channel.protocol + channel.uri + '/' + URI
@@ -229,9 +229,11 @@ export default class Client {
       if (pat.test(URI)) {
         url = URI
       }
-      const req = await axios.post(url, data, options.axios || {})
-      return req
+      const resp = await axios.post(url, data, options.axios || {})
+      await channel.headerHandler(resp.headers)
+      return resp
     } catch (err) {
+      await channel.headerHandler(err.response.headers)
       await errorHandler(err)
       throw err
     } finally {
@@ -252,9 +254,11 @@ export default class Client {
       if (pat.test(URI)) {
         url = URI
       }
-      const req = await axios.put(url, data, options.axios || {})
-      return req
+      const resp = await axios.put(url, data, options.axios || {})
+      await channel.headerHandler(resp.headers)
+      return resp
     } catch (err) {
+      await channel.headerHandler(err.response.headers)
       await errorHandler(err)
       throw err
     } finally {
@@ -275,9 +279,11 @@ export default class Client {
       if (pat.test(URI)) {
         url = URI
       }
-      const req = await axios.delete(url, options.axios || {})
-      return req
+      const resp = await axios.delete(url, options.axios || {})
+      await channel.headerHandler(resp.headers)
+      return resp
     } catch (err) {
+      await channel.headerHandler(err.response.headers)
       await errorHandler(err)
       throw err
     } finally {
@@ -322,9 +328,9 @@ export default class Client {
     const optioner = dialect.optioner(options)
 
     message = Object.assign({}, message, dialect.interface, router, parameter, optioner)
-		if (channel.connection === null) {
-			await channel.connect()
-		}
+    if (channel.connection === null) {
+      await channel.connect()
+    }
     channel.connection.send(JSON.stringify(message))
 
     const answer = await retry(() => new Promise((resolve, reject) => {
