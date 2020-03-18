@@ -49,6 +49,14 @@ function wsStrategy (options) {
     connectable: true,
     alive: false,
     answers: {},
+		listeners: {},
+		terminate () {
+			self._channels[options.name].connection.close()
+			self._channels[options.name].connection = null
+			self._channels[options.name].answers = {}
+			self._channels[options.name].listeners = {}
+			console.log(self._channels[options.name])
+		},
     connect: function () {
       return new Promise ((resolve, reject) => {
         if (self._channels[options.name].connection !== null) {
@@ -76,12 +84,20 @@ function wsStrategy (options) {
           ws.addEventListener('message', function (msg) {
             try {
               const tr = JSON.parse(msg.data)
-              console.log(`Socket message on channel ${opts.name}`, tr)
               if (options.rpc && options.rpc.headerHandler) {
                 options.rpc.headerHandler(tr.headers || {})
               }
-              if (tr.id) {
+              if ((tr._type === 'rpcResponse' || tr._type === 'rpcError') && tr.id) {
                 self._channels[options.name].answers[tr.id] = tr.result || { error: tr.error }
+              }
+              if (tr._type === 'event') {
+								console.log('Server event...', tr)
+                let eventSubscribers = self._channels[options.name].listeners[tr.event]
+                if (eventSubscribers.length) {
+                  for (let subscriber of eventSubscribers) {
+                    subscriber(tr.message)
+                  }
+                }
               }
             } catch (err) {
               console.error(err)
@@ -119,6 +135,7 @@ export default class Client {
     if (this._channels[channelName].connectable) {
       channel.connection = this._channels[channelName].connection
       channel.connect = this._channels[channelName].connect
+      channel.terminate = this._channels[channelName].terminate
     }
     return channel
   }
@@ -291,12 +308,22 @@ export default class Client {
     }
   }
 
-  subscribe () {
-    throw new Error('Not implemented yet!')
+  subscribeToEvent (event, callback, options = {}) {
+    const channelName = options.channel || this._deafultRPCChannel
+    const channel = this._channels[channelName]
+    if(!channel.listeners[event]) {
+      channel.listeners[event] = []
+    }
+    channel.listeners[event].push(callback)
   }
 
-  unsubscribe () {
-    throw new Error('Not implemented yet!')
+  unsubscribeFromEvent (event, callback, options = {}) {
+    const channelName = options.channel || this._deafultRPCChannel
+    const channel = this._channels[channelName]
+    if(!channel.listeners[event]) {
+      return
+    }
+    channel.listeners[event] = channel.listeners[event].filter(fn => fn !== callback)
   }
 
   sendMessage () {
