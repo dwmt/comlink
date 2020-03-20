@@ -6,8 +6,8 @@ export default class Server {
     this._dialects = {}
     this._channels = {}
     this._clients = {}
-		this.session = {}
-		this.eventEmitter = new EventEmitter()
+    this.session = {}
+    this.eventEmitter = new EventEmitter()
   }
 
   registerDialect (_dialect) {
@@ -27,8 +27,8 @@ export default class Server {
   sendMessageToClient (clientID, event, message) {
     if (!this.session[clientID]) {
       throw new Error('No user with given clientID')
-		}
-		this.eventEmitter.emit(`sendEventTo:${clientID}`, {
+    }
+    this.eventEmitter.emit(`sendEventTo:${clientID}`, {
       _type: 'event',
       event,
       message
@@ -69,11 +69,12 @@ export default class Server {
           return ws.close()
         }
         this.session[clientID].token = req.headers['sec-websocket-protocol']
-				ws.id = clientID
-			}
-			this.eventEmitter.on(`sendEventTo:${clientID}`, (msg) => {
-				ws.send(JSON.stringify(msg))
-			})
+        ws.id = clientID
+      }
+      this.eventEmitter.on(`sendEventTo:${clientID}`, (msg) => {
+        console.log('Event:', `sendEventTo:${clientID}`, msg)
+        ws.send(JSON.stringify(msg))
+      })
       ws.on('message', async (message) => {
         console.log('Incoming message from client: ' + ws.id)
         const parsed = JSON.parse(message)
@@ -85,7 +86,7 @@ export default class Server {
         const channelDialect = this._channels[channelName].dialects.includes(dialect)
         if (!channelDialect) {
           ws.send(JSON.stringify({
-						_type: 'rpcError',
+            _type: 'rpcError',
             id,
             error: `The used dialect ${dialect} is not supported on this channel`
           }))
@@ -97,7 +98,7 @@ export default class Server {
             headers = Object.assign({}, h)
           } catch (err) {
             return ws.send(JSON.stringify({
-							_type: 'rpcError',
+              _type: 'rpcError',
               id,
               error: err.message,
               headers: Object.assign({}, headers, {

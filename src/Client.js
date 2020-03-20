@@ -4,6 +4,19 @@ const WebSocket = require('isomorphic-ws')
 
 const Loader = require('@dwmt/loader/lib/Loader')
 
+function getLoader (channel, options) {
+  let loader = new Loader()
+
+  if (typeof options.loader === 'boolean' && !options.loader) {
+    return loader
+  }
+
+  if (typeof options.loader === 'undefined') {
+    loader = channel.loader
+  }
+
+  return loader
+}
 
 const retry = (fn, ms = 1000, maxRetries = 10) => new Promise((resolve, reject) => {
   fn()
@@ -49,14 +62,14 @@ function wsStrategy (options) {
     connectable: true,
     alive: false,
     answers: {},
-		listeners: {},
-		terminate () {
-			self._channels[options.name].connection.close()
-			self._channels[options.name].connection = null
-			self._channels[options.name].answers = {}
-			self._channels[options.name].listeners = {}
-			console.log(self._channels[options.name])
-		},
+    listeners: {},
+    terminate () {
+      self._channels[options.name].connection.close()
+      self._channels[options.name].connection = null
+      self._channels[options.name].answers = {}
+      self._channels[options.name].listeners = {}
+      console.log(self._channels[options.name])
+    },
     connect: function () {
       return new Promise ((resolve, reject) => {
         if (self._channels[options.name].connection !== null) {
@@ -91,7 +104,7 @@ function wsStrategy (options) {
                 self._channels[options.name].answers[tr.id] = tr.result || { error: tr.error }
               }
               if (tr._type === 'event') {
-								console.log('Server event...', tr)
+                console.log('Server event...', tr)
                 let eventSubscribers = self._channels[options.name].listeners[tr.event]
                 if (eventSubscribers.length) {
                   for (let subscriber of eventSubscribers) {
@@ -156,6 +169,10 @@ export default class Client {
   }
 
   registerChannel (channel) {
+		let availableChannelTypes = ['http', 'ws']
+    if (!channel.type in availableChannelTypes ) {
+			throw new Error(`[Comlink] Channel type "${channel.type}" is not supported!`)
+		}
     if (channel.type === 'http') {
       const chn = httpStrategy.call(this, channel)
       if (chn.default) {
@@ -164,7 +181,7 @@ export default class Client {
       if (chn.default && chn.rpc) {
         this._deafultRPCChannel = chn.name
       }
-      this._channels[chn.name] = chn
+			this._channels[chn.name] = chn
     }
     if (channel.type === 'ws') {
       const chn = wsStrategy.call(this, channel)
@@ -209,9 +226,10 @@ export default class Client {
   }
 
   async get (URI, options = {}) {
+    this.checkDefaultHTTPChannel()
     const channelName = options.channel || this._deafultHTTPChannel
     const channel = this._channels[channelName]
-    const loader = options.loader || channel.loader
+    const loader = getLoader(channel, options)
     const errorHandler = options.onError || channel.onError
 
     const loaderID = loader.work()
@@ -232,11 +250,16 @@ export default class Client {
       loader.terminate(loaderID)
     }
   }
-
+  checkDefaultHTTPChannel () {
+    if (!this._deafultHTTPChannel) {
+      throw new Error('[Comlink] No default HTTP channel')
+    }
+  }
   async post (URI, data, options = {}) {
+    this.checkDefaultHTTPChannel()
     const channelName = options.channel || this._deafultHTTPChannel
     const channel = this._channels[channelName]
-    const loader = options.loader || channel.loader
+    const loader = getLoader(channel, options)
     const errorHandler = options.onError || channel.onError
     
     const loaderID = loader.work()
@@ -259,9 +282,10 @@ export default class Client {
   }
 
   async put (URI, data, options = {}) {
+    this.checkDefaultHTTPChannel()
     const channelName = options.channel || this._deafultHTTPChannel
     const channel = this._channels[channelName]
-    const loader = options.loader || channel.loader
+    const loader = getLoader(channel, options)
     const errorHandler = options.onError || channel.onError
 
     const loaderID = loader.work()
@@ -284,9 +308,10 @@ export default class Client {
   }
 
   async delete (URI, options = {}) {
+    this.checkDefaultHTTPChannel()
     const channelName = options.channel || this._deafultHTTPChannel
     const channel = this._channels[channelName]
-    const loader = options.loader || channel.loader
+    const loader = getLoader(channel, options)
     const errorHandler = options.onError || channel.onError
 
     const loaderID = loader.work()
@@ -374,10 +399,10 @@ export default class Client {
     return answer
   }
 
-  async request (path, data, options, _dialect) {
+  async request (path, data, options = {}, _dialect) {
     const channelName = options.channel || this._deafultRPCChannel
     const channel = this._channels[channelName]
-    const loader = options.loader || channel.loader
+    const loader = getLoader(channel, options)
     const errorHandler = options.onError || channel.onError
 
     const loaderID = loader.work()
@@ -397,10 +422,10 @@ export default class Client {
     }
   }
 
-  async inform (path, data, options, _dialect) {
+  async inform (path, data, options = {}, _dialect) {
     const channelName = options.channel || this._deafultRPCChannel
     const channel = this._channels[channelName]
-    const loader = options.loader || channel.loader
+    const loader = getLoader(channel, options)
     const errorHandler = options.onError || channel.onError
 
     const loaderID = loader.work()
