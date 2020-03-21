@@ -63,14 +63,25 @@ function wsStrategy (options) {
     alive: false,
     answers: {},
     listeners: {},
+    onConnectionOpen : options.onConnectionOpen || function () {},
+    onConnectionTermination : options.onConnectionTermination || function () {},
+    onConnectionClose : options.onConnectionClose || function () {},
+    onConnectionError : options.onConnectionError || function () {},
+    callbacks: {
+			onConnectionOpen: function () {},
+			onConnectionClose: function () {},
+			onConnectionError: function () {},
+			onConnectionTermination: function () {}
+		},
     terminate () {
       self._channels[options.name].connection.close()
       self._channels[options.name].connection = null
       self._channels[options.name].answers = {}
       self._channels[options.name].listeners = {}
-      console.log(self._channels[options.name])
+      self._channels[options.name].onConnectionTermination()
+      self._channels[options.name].callbacks.onConnectionTermination()
     },
-    connect: function () {
+    connect () {
       return new Promise ((resolve, reject) => {
         if (self._channels[options.name].connection !== null) {
           return resolve()
@@ -84,12 +95,19 @@ function wsStrategy (options) {
         self._channels[options.name].connection = ws
         ws.addEventListener('open', () => {
           self._channels[options.name].alive = true
-          console.log('Connection established')
+          self._channels[options.name].onConnectionOpen()
+          self._channels[options.name].callbacks.onConnectionOpen()
           resolve()
         })
-        ws.addEventListener('close', () => { self._channels[options.name].alive = false })
-        ws.addEventListener('error', () => {
+        ws.addEventListener('close', () => {
           self._channels[options.name].alive = false
+          self._channels[options.name].onConnectionClose()
+          self._channels[options.name].callbacks.onConnectionClose()
+        })
+        ws.addEventListener('error', (err) => {
+          self._channels[options.name].alive = false
+          self._channels[options.name].onConnectionError(err)
+          self._channels[options.name].callbacks.onConnectionError(err)
           reject()
         })
   
@@ -140,7 +158,7 @@ export default class Client {
     if (!this._channels[channelName]) {
       throw new Error(`No channel registered with ${channelName}`)
     }
-
+		let self = this
     const channel = {}
 
     channel.name = this._channels[channelName].name
@@ -149,7 +167,10 @@ export default class Client {
       channel.connection = this._channels[channelName].connection
       channel.connect = this._channels[channelName].connect
       channel.terminate = this._channels[channelName].terminate
-    }
+		}
+		channel.registerCallback = function (callbackName, cb) {
+			self._channels[channelName].callbacks[callbackName] = cb
+		}
     return channel
   }
 
@@ -169,10 +190,10 @@ export default class Client {
   }
 
   registerChannel (channel) {
-		let availableChannelTypes = ['http', 'ws']
+    let availableChannelTypes = ['http', 'ws']
     if (!channel.type in availableChannelTypes ) {
-			throw new Error(`[Comlink] Channel type "${channel.type}" is not supported!`)
-		}
+      throw new Error(`[Comlink] Channel type "${channel.type}" is not supported!`)
+    }
     if (channel.type === 'http') {
       const chn = httpStrategy.call(this, channel)
       if (chn.default) {
@@ -181,7 +202,7 @@ export default class Client {
       if (chn.default && chn.rpc) {
         this._deafultRPCChannel = chn.name
       }
-			this._channels[chn.name] = chn
+      this._channels[chn.name] = chn
     }
     if (channel.type === 'ws') {
       const chn = wsStrategy.call(this, channel)

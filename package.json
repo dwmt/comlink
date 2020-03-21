@@ -1,6 +1,6 @@
 {
 	"name": "@dwmt/comlink",
-	"version": "1.0.9",
+	"version": "1.0.10",
 	"description": "Communication library for lazy enthusiasts",
 	"main": "dist/Comlink.js",
 	"module": "dist/Comlink.esm.js",
