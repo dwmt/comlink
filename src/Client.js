@@ -6,13 +6,16 @@ const Loader = require('@dwmt/loader/lib/Loader')
 
 function getLoader (channel, options) {
   let loader = new Loader()
-
   if (typeof options.loader === 'boolean' && !options.loader) {
     return loader
   }
 
   if (typeof options.loader === 'undefined') {
     loader = channel.loader
+  }
+  
+  if(typeof options.loader === 'object' && options.loader.work && options.loader.terminate) {
+    loader = options.loader
   }
 
   return loader
@@ -68,11 +71,11 @@ function wsStrategy (options) {
     onConnectionClose : options.onConnectionClose || function () {},
     onConnectionError : options.onConnectionError || function () {},
     callbacks: {
-			onConnectionOpen: function () {},
-			onConnectionClose: function () {},
-			onConnectionError: function () {},
-			onConnectionTermination: function () {}
-		},
+      onConnectionOpen: function () {},
+      onConnectionClose: function () {},
+      onConnectionError: function () {},
+      onConnectionTermination: function () {}
+    },
     terminate () {
       self._channels[options.name].connection.close()
       self._channels[options.name].connection = null
@@ -158,7 +161,7 @@ export default class Client {
     if (!this._channels[channelName]) {
       throw new Error(`No channel registered with ${channelName}`)
     }
-		let self = this
+    let self = this
     const channel = {}
 
     channel.name = this._channels[channelName].name
@@ -167,10 +170,10 @@ export default class Client {
       channel.connection = this._channels[channelName].connection
       channel.connect = this._channels[channelName].connect
       channel.terminate = this._channels[channelName].terminate
-		}
-		channel.registerCallback = function (callbackName, cb) {
-			self._channels[channelName].callbacks[callbackName] = cb
-		}
+    }
+    channel.registerCallback = function (callbackName, cb) {
+      self._channels[channelName].callbacks[callbackName] = cb
+    }
     return channel
   }
 
