@@ -2,12 +2,13 @@ import generateUUID from './util/uuid'
 const {EventEmitter} = require('events')
 
 export default class Server {
-  constructor () {
+  constructor (logger) {
     this._dialects = {}
     this._channels = {}
     this._clients = {}
     this.session = {}
     this.eventEmitter = new EventEmitter()
+    this.logger = logger || console
   }
 
   registerDialect (_dialect) {
@@ -22,10 +23,14 @@ export default class Server {
       throw new Error('Only websocket listeners implemented yet!')
     }
     this._channels[_channel.name] = _channel
+    this.session[_channel.name] = {
+      clients: {},
+      tokens: {}
+    }
   }
 
-  sendMessageToClient (clientID, event, message) {
-    if (!this.session[clientID]) {
+  sendMessageToClient (channelName, clientID, event, message) {
+    if (!this.session[channelName].clients[clientID]) {
       throw new Error('No user with given clientID')
     }
     this.eventEmitter.emit(`sendEventTo:${clientID}`, {
@@ -35,20 +40,29 @@ export default class Server {
     })
   }
 
-  getCLientIDByToken (token) {
-    let sessions = Object.keys(this.session)
-    let clientID = false
-    for(let id of sessions) {
-      if (this.session[id].token === token) {
-        clientID = id
-        break
-      }
-    }
+  getClientIDByToken (channelName, token) {
+    let clientID = this.session[channelName].tokens[token].client
     if (!clientID) {
       throw new Error('No user with given token')
     }
-    console.log('ClientID: ', clientID)
     return clientID
+  }
+  getTokenByClientID (channelName, clientID) {
+    let token = this.session[channelName].clients[clientID].token
+    if (!token) {
+      throw new Error('No user with given clientID')
+    }
+    return token
+  }
+
+  isTokenActive (channelName, token) {
+    let clientID = this.session[channelName].tokens[token].client
+    return !!clientID
+  }
+  
+  isClientActive (channelName, clientID) {
+    let token = this.session[channelName].clients[clientID].token
+    return !!token
   }
 
   applyChannel (channelName, wss) {
@@ -58,25 +72,29 @@ export default class Server {
     }
     wss.on('connection', async (ws, req) => {
       let clientID = generateUUID()
-      this.session[clientID] = {}
+      this.session[channelName].clients[clientID] = {}
       if (channel.auth) {
-        console.log('Authenticating ws connection')
-        if (!req.headers['sec-websocket-protocol'] || req.headers['sec-websocket-protocol'].length === 0) {
+        const token = req.headers['sec-websocket-protocol']
+        if (!token || token.length === 0) {
           return ws.close()
         }
-        let check = channel.tokenValidator(req.headers['sec-websocket-protocol'])
+        let check = await channel.tokenValidator(token)
         if (!check) {
           return ws.close()
         }
-        this.session[clientID].token = req.headers['sec-websocket-protocol']
+        this.session[channelName].clients[clientID].token = token
+        this.session[channelName].tokens[token] = { client: clientID }
         ws.id = clientID
       }
       this.eventEmitter.on(`sendEventTo:${clientID}`, (msg) => {
-        console.log('Event:', `sendEventTo:${clientID}`, msg)
         ws.send(JSON.stringify(msg))
       })
+      ws.on('close', async () => {
+        let token = this.session[channelName].clients[ws.id].token
+        delete this.session[channelName].clients[ws.id]
+        delete this.session[channelName].tokens[token]
+      })
       ws.on('message', async (message) => {
-        console.log('Incoming message from client: ' + ws.id)
         const parsed = JSON.parse(message)
         const dialect = parsed._dialect
         if (!dialect) {
@@ -107,16 +125,20 @@ export default class Server {
             }))
           }
         }
+        parsed._token = this.session[ws.id].token
+        parsed._clientID = ws.id
         try {
           const returnValue = await this._dialects[dialect].onRequest(parsed)
-          ws.send(JSON.stringify({
-            _type: 'rpcResponse',
-            id,
-            result: returnValue,
-            headers: Object.assign({}, headers, {
-              serverTime: Date.now()
-            })
-          }))
+          if (parsed._type === 'request') {
+            ws.send(JSON.stringify({
+              _type: 'rpcResponse',
+              id,
+              result: returnValue,
+              headers: Object.assign({}, headers, {
+                serverTime: Date.now()
+              })
+            }))
+          }
         } catch (err) {
           ws.send(JSON.stringify({
             _type: 'rpcError',
