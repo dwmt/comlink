@@ -36,6 +36,7 @@ const retry = (fn, ms = 1000, maxRetries = 10) => new Promise((resolve, reject) 
 
 function httpStrategy (options) {
   return {
+		type: 'http',
     name: options.name,
     protocol: options.ssl ? 'https://' : 'http://',
     uri: options.uri,
@@ -51,6 +52,7 @@ function httpStrategy (options) {
 function wsStrategy (options) {
   const self = this
   const channel = {
+		type: 'ws',
     name: options.name,
     protocol: options.ssl ? 'wss://' : 'ws://',
     uri: options.uri,
@@ -87,7 +89,7 @@ function wsStrategy (options) {
     connect () {
       return new Promise ((resolve, reject) => {
         if (self._channels[options.name].connection !== null) {
-          return resolve()
+          return resolve(true)
         }
         const opts = []
         if (options.auth) {
@@ -100,7 +102,7 @@ function wsStrategy (options) {
           self._channels[options.name].alive = true
           self._channels[options.name].onConnectionOpen()
           self._channels[options.name].callbacks.onConnectionOpen()
-          resolve()
+          resolve(true)
         })
         ws.addEventListener('close', () => {
           self._channels[options.name].alive = false
@@ -111,7 +113,7 @@ function wsStrategy (options) {
           self._channels[options.name].alive = false
           self._channels[options.name].onConnectionError(err)
           self._channels[options.name].callbacks.onConnectionError(err)
-          reject()
+          reject(err)
         })
   
         if (options.rpc) {
@@ -125,7 +127,6 @@ function wsStrategy (options) {
                 self._channels[options.name].answers[tr.id] = tr.result || { error: tr.error }
               }
               if (tr._type === 'event') {
-                console.log('Server event...', tr)
                 let eventSubscribers = self._channels[options.name].listeners[tr.event]
                 if (eventSubscribers.length) {
                   for (let subscriber of eventSubscribers) {
@@ -156,6 +157,22 @@ export default class Client {
     this._deafultRPCChannel = null
     this._defaultDialect = null
   }
+
+	get channels () {
+		let channels = Object.keys(this._channels)
+		return channels || []
+	}
+
+	async connect () {
+		let connecting = []
+		for(let channelName of Object.keys(this._channels)) {
+			let channel = this._channels[channelName]
+			if (channel.type === 'ws' && !channel.alive) {
+				connecting.push(channel.connect())
+			}
+		}
+		return Promise.all(connecting)
+	}
 
   channel (channelName) {
     if (!this._channels[channelName]) {
@@ -198,7 +215,7 @@ export default class Client {
       throw new Error(`[Comlink] Channel type "${channel.type}" is not supported!`)
     }
     if (channel.type === 'http') {
-      const chn = httpStrategy.call(this, channel)
+			const chn = httpStrategy.call(this, channel)
       if (chn.default) {
         this._deafultHTTPChannel = chn.name
       }
@@ -217,7 +234,11 @@ export default class Client {
       }
       this._channels[chn.name] = chn
     }
-  }
+	}
+	
+	get headers () {
+		return Object.keys(this._headers)
+	}
 
   checkHeaders () {
     const headers = Object.keys(this._headers)

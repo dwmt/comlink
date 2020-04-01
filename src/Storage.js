@@ -1,3 +1,4 @@
+import { inherits } from 'util'
 import Cookies from 'js-cookie'
 
 function Storage () {}
@@ -9,7 +10,7 @@ Storage.prototype.clear = function () { console.error('clear not implemented') }
 function CookieStorage () {
   this._cookie = Cookies
 }
-CookieStorage.prototype = Storage.prototype
+inherits(CookieStorage, Storage)
 
 CookieStorage.prototype.getItem = function (key) {
   return this._cookie.get(key)
@@ -23,11 +24,35 @@ CookieStorage.prototype.removeItem = function (key, options) {
   return this._cookie.remove(key, options)
 }
 
+function NodeStorage () {
+  this._store = {}
+}
+
+inherits(NodeStorage, Storage)
+
+NodeStorage.prototype.getItem = function (key) {
+  return this._store[key] || null
+}
+
+NodeStorage.prototype.setItem = function (key, value, options) {
+  this._store[key] = value
+  return undefined
+}
+
+NodeStorage.prototype.removeItem = function (key, options) {
+  delete this._store[key]
+}
+
+NodeStorage.prototype.clear = function () {
+  this._store = {}
+}
+
 const LocalStorage = typeof window !== 'undefined' ? window.localStorage : Storage
 const SessionStorage = typeof window !== 'undefined' ? window.sessionStorage : Storage
 
 export default {
   LocalStorage,
   SessionStorage,
-  CookieStorage: new CookieStorage()
+  CookieStorage: new CookieStorage(),
+  NodeStorage: new NodeStorage()
 }
