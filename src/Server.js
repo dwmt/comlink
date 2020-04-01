@@ -112,7 +112,7 @@ export default class Server {
         let headers = {}
         if (channel.headerInjector) {
           try {
-            let h = await channel.headerInjector(this.session[ws.id])
+            let h = await channel.headerInjector(this.session[channelName].clients[ws.id].token)
             headers = Object.assign({}, h)
           } catch (err) {
             return ws.send(JSON.stringify({
@@ -124,8 +124,8 @@ export default class Server {
               })
             }))
           }
-        }
-        parsed._token = this.session[ws.id].token
+				}
+        parsed._token = this.session[channelName].clients[ws.id].token
         parsed._clientID = ws.id
         try {
           const returnValue = await this._dialects[dialect].onRequest(parsed)
