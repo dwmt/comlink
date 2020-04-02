@@ -36,7 +36,7 @@ const retry = (fn, ms = 1000, maxRetries = 10) => new Promise((resolve, reject) 
 
 function httpStrategy (options) {
   return {
-		type: 'http',
+    type: 'http',
     name: options.name,
     protocol: options.ssl ? 'https://' : 'http://',
     uri: options.uri,
@@ -52,7 +52,7 @@ function httpStrategy (options) {
 function wsStrategy (options) {
   const self = this
   const channel = {
-		type: 'ws',
+    type: 'ws',
     name: options.name,
     protocol: options.ssl ? 'wss://' : 'ws://',
     uri: options.uri,
@@ -124,7 +124,11 @@ function wsStrategy (options) {
                 options.rpc.headerHandler(tr.headers || {})
               }
               if ((tr._type === 'rpcResponse' || tr._type === 'rpcError') && tr.id) {
-                self._channels[options.name].answers[tr.id] = tr.result || { error: tr.error }
+                if (tr.result) {
+                  self._channels[options.name].answers[tr.id].resolve(tr.result) 
+                } else {
+                  self._channels[options.name].answers[tr.id].reject({ error: tr.error })
+                }
               }
               if (tr._type === 'event') {
                 let eventSubscribers = self._channels[options.name].listeners[tr.event]
@@ -158,21 +162,21 @@ export default class Client {
     this._defaultDialect = null
   }
 
-	get channels () {
-		let channels = Object.keys(this._channels)
-		return channels || []
-	}
+  get channels () {
+    let channels = Object.keys(this._channels)
+    return channels || []
+  }
 
-	async connect () {
-		let connecting = []
-		for(let channelName of Object.keys(this._channels)) {
-			let channel = this._channels[channelName]
-			if (channel.type === 'ws' && !channel.alive) {
-				connecting.push(channel.connect())
-			}
-		}
-		return Promise.all(connecting)
-	}
+  async connect () {
+    let connecting = []
+    for(let channelName of Object.keys(this._channels)) {
+      let channel = this._channels[channelName]
+      if (channel.type === 'ws' && !channel.alive) {
+        connecting.push(channel.connect())
+      }
+    }
+    return Promise.all(connecting)
+  }
 
   channel (channelName) {
     if (!this._channels[channelName]) {
@@ -215,7 +219,7 @@ export default class Client {
       throw new Error(`[Comlink] Channel type "${channel.type}" is not supported!`)
     }
     if (channel.type === 'http') {
-			const chn = httpStrategy.call(this, channel)
+      const chn = httpStrategy.call(this, channel)
       if (chn.default) {
         this._deafultHTTPChannel = chn.name
       }
@@ -234,11 +238,11 @@ export default class Client {
       }
       this._channels[chn.name] = chn
     }
-	}
-	
-	get headers () {
-		return Object.keys(this._headers)
-	}
+  }
+  
+  get headers () {
+    return Object.keys(this._headers)
+  }
 
   checkHeaders () {
     const headers = Object.keys(this._headers)
@@ -429,19 +433,18 @@ export default class Client {
       await channel.connect()
     }
     channel.connection.send(JSON.stringify(message))
-
-    const answer = await retry(() => new Promise((resolve, reject) => {
-      if (!channel.answers[ID]) {
-        return reject(new Error(''))
-      }
-      return resolve(channel.answers[ID])
-    }), rpcConfig.retryInterval, rpcConfig.maxRetries)
-
-    if (answer.error) {
-      throw new Error(answer.error)
-    }
-
-    return answer
+    
+    const answerPromise = new Promise((resolve, reject) => {
+      channel.answers[ID] = { resolve, reject }
+    })
+    
+    const timeoutPromise = new Promise((resolve, reject) => {
+      setTimeout(() => {
+        reject(`[Comlink] Maximum retries exceeded for message: ${ID}`)
+      }, rpcConfig.retryInterval * rpcConfig.maxRetries)
+    })
+    
+    return Promise.race([answerPromise, timeoutPromise])
   }
 
   async request (path, data, options = {}, _dialect) {
