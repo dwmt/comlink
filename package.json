@@ -7,8 +7,8 @@
 	"scripts": {
 		"prepublish": "npx bili --format esm --format cjs",
 		"dev": "npx bili --watch --format esm --format cjs",
-		"test": "npx mocha test/**/*.test.js",
-		"test:watch": "npx mocha test/**/*.test.js --watch",
+		"test": "npx mocha --require @babel/register test/**/*.test.js",
+		"test:watch": "npx mocha --require @babel/register test/**/*.test.js --watch",
 		"coverage": "npx nyc npm run test",
 		"report-coverage": "npx nyc --reporter=lcov npm run test"
 	},
@@ -52,6 +52,10 @@
 		"ws": "^7.3.0"
 	},
 	"devDependencies": {
+		"@babel/core": "^7.10.1",
+		"@babel/preset-env": "^7.10.1",
+		"@babel/register": "^7.10.1",
+		"babel-plugin-dynamic-import-node": "^2.3.3",
 		"bili": "^4.10.0",
 		"chai": "^4.2.0",
 		"codecov": "^3.7.0",
@@ -64,5 +68,22 @@
 		"mocha": "^7.2.0",
 		"nyc": "^15.0.1",
 		"sinon": "^9.0.2"
-	}
+  },
+  "babel": {
+    "plugins": [
+      [
+        "dynamic-import-node"
+      ]
+    ],
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "targets": {
+            "node": "current"
+          }
+        }
+      ]
+    ]
+  }
 }
