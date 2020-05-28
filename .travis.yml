@@ -7,6 +7,8 @@ install:
   - npm i
 
 script:
+  - bash <(curl -Ls https://coverage.codacy.com/get.sh)
   - npm run report-coverage
   - codecov
-  - cat ./coverage/lcov.info | codacy-coverage
+  # - cat ./coverage/lcov.info | codacy-coverage-reporter
+  - codacy-coverage-reporter report -l JavaScript -r ./coverage/lcov.info
