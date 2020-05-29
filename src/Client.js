@@ -463,7 +463,7 @@ export default class Client {
         return this._rpc('request', path, data, options, _dialect)
       }
     } catch (err) {
-      await errorHandler(err)
+      await errorHandler(err, options)
       throw err
     } finally {
       loader.terminate(loaderID)
