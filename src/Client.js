@@ -150,7 +150,7 @@ function wsStrategy (options) {
 }
 
 export default class Client {
-  constructor () {
+  constructor (options = {}) {
     this._axios = axios
     this._ws = WebSocket
     this._dialects = {}
@@ -160,11 +160,30 @@ export default class Client {
     this._deafultWSChannel = null
     this._deafultRPCChannel = null
     this._defaultDialect = null
+
+    this._instanceID = generateUUID()
+
+    this._devtools = options.devtools || true
   }
 
   get channels () {
     let channels = Object.keys(this._channels)
     return channels || []
+  }
+
+  disableDevtools () {
+    this._devtools = false
+  }
+
+  bindDevtools () {
+    if (global.window) {
+      if (!global.window._COMLINK_DEV_TOOLS) {
+        global.window._COMLINK_DEV_TOOLS = {}
+      }
+
+      global.window._COMLINK_DEV_TOOLS[this._instanceID] = this
+      console.log('[COMLINK] Devtools enabled with instanceID: ' + this._instanceID)
+    }
   }
 
   async connect () {
@@ -460,7 +479,7 @@ export default class Client {
         const req = await axios.post(url, options.axios || {})
         return req
       } else {
-        return this._rpc('request', path, data, options, _dialect)
+        return await this._rpc('request', path, data, options, _dialect)
       }
     } catch (err) {
       await errorHandler(err, options)
@@ -483,7 +502,7 @@ export default class Client {
         const req = await axios.post(url, options.axios || {})
         return req
       } else {
-        return this._rpc('inform', path, data, options, _dialect)
+        return await this._rpc('inform', path, data, options, _dialect)
       }
     } catch (err) {
       await errorHandler(err)
