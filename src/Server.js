@@ -59,7 +59,7 @@ export default class Server {
     let clientID = this.session[channelName].tokens[token].client
     return !!clientID
   }
-  
+
   isClientActive (channelName, clientID) {
     let token = this.session[channelName].clients[clientID].token
     return !!token
@@ -115,7 +115,7 @@ export default class Server {
             let h = await channel.headerInjector(this.session[channelName].clients[ws.id].token)
             headers = Object.assign({}, h)
           } catch (err) {
-            return ws.send(JSON.stringify({
+            ws.send(JSON.stringify({
               _type: 'rpcError',
               id,
               error: err.message,
@@ -123,6 +123,8 @@ export default class Server {
                 serverTime: Date.now()
               })
             }))
+            throw err
+            return
           }
 				}
         parsed._token = this.session[channelName].clients[ws.id].token
@@ -148,6 +150,7 @@ export default class Server {
               serverTime: Date.now()
             })
           }))
+          throw err
         }
       })
     })
