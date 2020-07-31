@@ -13,7 +13,7 @@ function getLoader (channel, options) {
   if (typeof options.loader === 'undefined') {
     loader = channel.loader
   }
-  
+
   if(typeof options.loader === 'object' && options.loader.work && options.loader.terminate) {
     loader = options.loader
   }
@@ -115,7 +115,7 @@ function wsStrategy (options) {
           self._channels[options.name].callbacks.onConnectionError(err)
           reject(err)
         })
-  
+
         if (options.rpc) {
           ws.addEventListener('message', function (msg) {
             try {
@@ -123,9 +123,9 @@ function wsStrategy (options) {
               if (options.rpc && options.rpc.headerHandler) {
                 options.rpc.headerHandler(tr.headers || {})
               }
-              if ((tr._type === 'rpcResponse' || tr._type === 'rpcError') && tr.id) {
+              if ((tr._type === 'rpcResponse' || tr._type === 'rpcError' || typeof tr._type === 'undefined') && tr.id) {
                 if (tr.result) {
-                  self._channels[options.name].answers[tr.id].resolve(tr.result) 
+                  self._channels[options.name].answers[tr.id].resolve(tr.result)
                 } else {
                   self._channels[options.name].answers[tr.id].reject({ error: tr.error })
                 }
@@ -258,7 +258,7 @@ export default class Client {
       this._channels[chn.name] = chn
     }
   }
-  
+
   get headers () {
     return Object.keys(this._headers)
   }
@@ -329,7 +329,7 @@ export default class Client {
     const channel = this._channels[channelName]
     const loader = getLoader(channel, options)
     const errorHandler = options.onError || channel.onError
-    
+
     const loaderID = loader.work()
     try {
       let url = channel.protocol + channel.uri + '/' + URI
@@ -438,9 +438,12 @@ export default class Client {
     const ID = idGenerator()
 
     let message = {
-      id: ID,
-      _dialect: dialect.name,
-      _type: type
+      id: ID
+    }
+    const sendMeta = typeof dialect.sendMeta === 'undefined' ? true : dialect.sendMeta
+    if (sendMeta) {
+      message['_dialect'] = dialect.name
+      message['_type'] = type
     }
 
     const router = dialect.router(path)
@@ -452,17 +455,17 @@ export default class Client {
       await channel.connect()
     }
     channel.connection.send(JSON.stringify(message))
-    
+
     const answerPromise = new Promise((resolve, reject) => {
       channel.answers[ID] = { resolve, reject }
     })
-    
+
     const timeoutPromise = new Promise((resolve, reject) => {
       setTimeout(() => {
         reject(`[Comlink] Maximum retries exceeded for message: ${ID}`)
       }, rpcConfig.retryInterval * rpcConfig.maxRetries)
     })
-    
+
     return Promise.race([answerPromise, timeoutPromise])
   }
 

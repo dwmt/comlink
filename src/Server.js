@@ -126,11 +126,12 @@ export default class Server {
             throw err
             return
           }
-				}
-        parsed._token = this.session[channelName].clients[ws.id].token
-        parsed._clientID = ws.id
+        }
+        let ctx = {}
+        ctx.token = this.session[channelName].clients[ws.id].token
+        ctx.clientID = ws.id
         try {
-          const returnValue = await this._dialects[dialect].onRequest(parsed)
+          const returnValue = await this._dialects[dialect].onRequest(parsed, ctx)
           if (parsed._type === 'request') {
             ws.send(JSON.stringify({
               _type: 'rpcResponse',
