@@ -124,7 +124,7 @@ function wsStrategy (options) {
                 options.rpc.headerHandler(tr.headers || {})
               }
               if ((tr._type === 'rpcResponse' || tr._type === 'rpcError' || typeof tr._type === 'undefined') && tr.id) {
-                if (tr.result) {
+                if (typeof tr.result !== 'undefined') {
                   self._channels[options.name].answers[tr.id].resolve(tr.result)
                 } else {
                   self._channels[options.name].answers[tr.id].reject({ error: tr.error })

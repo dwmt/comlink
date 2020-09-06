@@ -1,89 +1,111 @@
 {
-	"name": "@dwmt/comlink",
-	"version": "1.1.11",
-	"description": "Communication library for lazy enthusiasts",
-	"main": "dist/Comlink.js",
-	"module": "dist/Comlink.esm.js",
-	"scripts": {
-		"prepublish": "npx bili --format esm --format cjs",
-		"dev": "npx bili --watch --format esm --format cjs",
-		"test": "npx mocha --require @babel/register test/**/*.test.js",
-		"test:watch": "npx mocha --require @babel/register test/**/*.test.js --watch",
-		"coverage": "npx nyc npm run test",
-		"report-coverage": "npx nyc --reporter=lcov npm run test"
-	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/dwmt/comlink.git"
-	},
-	"keywords": [
-		"comlink",
-		"communication",
-		"http",
-		"https",
-		"rest",
-		"ws",
-		"websockets",
-		"channels"
-	],
-	"contributors": [
-		{
-			"name": "Lajos Kovács",
-			"email": "lajoskvcs@icloud.com",
-			"url": "https://lajoskvcs.com"
-		},
-		{
-			"name": "Gergely Szabó",
-			"email": "gergely0116@gmail.com",
-			"url": "https://github.com/Baxi0116"
-		}
-	],
-	"license": "MIT",
-	"bugs": {
-		"url": "https://github.com/dwmt/comlink/issues"
-	},
-	"homepage": "https://github.com/dwmt/comlink#readme",
-	"dependencies": {
-		"@dwmt/loader": "^1.0.0",
-		"@rollup/plugin-json": "^4.0.3",
-		"axios": "^0.19.2",
-		"isomorphic-ws": "^4.0.1",
-		"js-cookie": "^2.2.1",
-		"ws": "^7.3.0"
-	},
-	"devDependencies": {
-		"@babel/core": "^7.10.1",
-		"@babel/preset-env": "^7.10.1",
-		"@babel/register": "^7.10.1",
-		"babel-plugin-dynamic-import-node": "^2.3.3",
-		"bili": "^4.10.0",
-		"chai": "^4.2.0",
-		"codecov": "^3.7.0",
-		"eslint": "^7.1.0",
-		"eslint-config-standard": "^14.1.1",
-		"eslint-plugin-import": "^2.20.2",
-		"eslint-plugin-node": "^11.1.0",
-		"eslint-plugin-promise": "^4.2.1",
-		"eslint-plugin-standard": "^4.0.1",
-		"mocha": "^7.2.0",
-		"nyc": "^15.0.1",
-		"sinon": "^9.0.2"
-	},
-	"babel": {
-		"plugins": [
-			[
-				"dynamic-import-node"
-			]
-		],
-		"presets": [
-			[
-				"@babel/preset-env",
-				{
-					"targets": {
-						"node": "current"
-					}
-				}
-			]
-		]
-	}
+  "name": "@dwmt/comlink",
+  "version": "1.1.13",
+  "description": "Communication library for lazy enthusiasts",
+  "main": "dist/Comlink.js",
+  "module": "dist/Comlink.esm.js",
+  "scripts": {
+    "prepublishOnly": "npm run build",
+    "build": "cross-env NODE_ENV=production rollup --config build/rollup.config.js",
+    "build:ssr": "cross-env NODE_ENV=production rollup --config build/rollup.config.js --format cjs",
+    "build:es": "cross-env NODE_ENV=production rollup --config build/rollup.config.js --format es",
+    "build:unpkg": "cross-env NODE_ENV=production rollup --config build/rollup.config.js --format iife",
+    "watch": "cross-env NODE_ENV=production rollup --config build/rollup.config.js --watch",
+    "test": "npx mocha --require @babel/register test/**/*.test.js",
+    "test:watch": "npx mocha --require @babel/register test/**/*.test.js --watch",
+    "coverage": "npx nyc npm run test",
+    "report-coverage": "npx nyc --reporter=lcov npm run test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dwmt/comlink.git"
+  },
+  "keywords": [
+    "comlink",
+    "communication",
+    "http",
+    "https",
+    "rest",
+    "ws",
+    "websockets",
+    "channels"
+  ],
+  "contributors": [
+    {
+      "name": "Lajos Kovács",
+      "email": "lajoskvcs@icloud.com",
+      "url": "https://lajoskvcs.com"
+    },
+    {
+      "name": "Gergely Szabó",
+      "email": "gergely0116@gmail.com",
+      "url": "https://github.com/Baxi0116"
+    }
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dwmt/comlink/issues"
+  },
+  "homepage": "https://github.com/dwmt/comlink#readme",
+  "dependencies": {
+    "@dwmt/loader": "^1.0.0",
+    "axios": "^0.19.2",
+    "isomorphic-ws": "^4.0.1",
+    "js-cookie": "^2.2.1",
+    "ws": "^7.3.1"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.10.5",
+    "@babel/core": "^7.11.1",
+    "@babel/plugin-syntax-dynamic-import": "^7.8.3",
+    "@babel/preset-env": "^7.11.0",
+    "@babel/preset-flow": "^7.10.4",
+    "@babel/register": "^7.10.5",
+    "@rollup/plugin-alias": "^3.1.1",
+    "@rollup/plugin-babel": "^5.2.0",
+    "@rollup/plugin-commonjs": "^15.0.0",
+    "@rollup/plugin-json": "^4.1.0",
+    "@rollup/plugin-replace": "^2.3.3",
+    "@types/js-cookie": "^2.2.6",
+    "@types/ws": "^7.2.6",
+    "@vue/cli-plugin-babel": "^4.5.4",
+    "@vue/cli-service": "^4.5.4",
+    "babel-plugin-dynamic-import-node": "^2.3.3",
+    "babel-plugin-istanbul": "^6.0.0",
+    "chai": "^4.2.0",
+    "codecov": "^3.7.2",
+    "cross-env": "^7.0.2",
+    "eslint": "^7.7.0",
+    "eslint-config-standard": "^14.1.1",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "minimist": "^1.2.5",
+    "mocha": "^8.1.1",
+    "nyc": "^15.1.0",
+    "rollup": "^2.26.3",
+    "rollup-plugin-node-polyfills": "^0.2.1",
+    "rollup-plugin-terser": "^7.0.0",
+    "rollup-plugin-vue": "^5.1.9",
+    "sinon": "^9.0.3",
+    "vue-template-compiler": "^2.6.11"
+  },
+  "babel": {
+    "plugins": [
+      [
+        "dynamic-import-node"
+      ]
+    ],
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "targets": {
+            "node": "current"
+          }
+        }
+      ]
+    ]
+  }
 }
