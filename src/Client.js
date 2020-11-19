@@ -488,9 +488,12 @@ export default class Client {
     }
 
     let requestObject = await dialect.handler(path, data, options)
-
-
-    return axios(requestObject)
+    try {
+      let response = await axios(requestObject)
+      return response.data
+    } catch (err) {
+      throw new Error(err.response.data.message)
+    }
   }
   async request (path, data, options = {}, _dialect) {
     const channelName = options.channel || this._deafultRPCChannel
