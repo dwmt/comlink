@@ -222,6 +222,7 @@ export default class Client {
     dialect.router = dialect.router || function (route) { return { path: route } }
     dialect.parameter = dialect.parameter || function (data) { return { parameters: data } }
     dialect.optioner = dialect.optioner || function () { return {} }
+    dialect.handler = dialect.handler || function () { return {} }
     this._dialects[dialect.name] = dialect
     if (dialect.default || this._defaultDialect === null) {
       this._defaultDialect = dialect.name
@@ -469,6 +470,28 @@ export default class Client {
     return Promise.race([answerPromise, timeoutPromise])
   }
 
+
+  async _rpcHTTP (type = 'request', path, data, options, _dialect) {
+    const channel = this._channels[options.channel || this._deafultRPCChannel]
+    const dialect = this._dialects[_dialect || this._defaultDialect]
+    const rpcConfig = channel.rpc
+
+    if (!dialect.type || dialect.type !== 'http') {
+      throw new Error('ComlinkDialect is not supported on HTTPChannel yet!')
+    }
+    if (dialect.type === 'http' && type !== 'request') {
+      throw new Error('HTTPDialect only supports request now!')
+    }
+
+    if (!rpcConfig.dialects.includes(dialect.name)) {
+      throw new Error(`The channel ${channel.name} not supports the ${dialect.name} dialect`)
+    }
+
+    let requestObject = await dialect.handler(path, data, options)
+
+
+    return axios(requestObject)
+  }
   async request (path, data, options = {}, _dialect) {
     const channelName = options.channel || this._deafultRPCChannel
     const channel = this._channels[channelName]
@@ -478,9 +501,7 @@ export default class Client {
     const loaderID = loader.work()
     try {
       if (channel.type === 'http') {
-        const url = channel.protocol + channel.uri + '/'
-        const req = await axios.post(url, options.axios || {})
-        return req
+        return await this._rpcHTTP('request', path, data, options, _dialect)
       } else {
         return await this._rpc('request', path, data, options, _dialect)
       }
@@ -501,9 +522,7 @@ export default class Client {
     const loaderID = loader.work()
     try {
       if (channel.type === 'http') {
-        const url = channel.protocol + channel.uri + '/'
-        const req = await axios.post(url, options.axios || {})
-        return req
+        return await this._rpc('inform', path, data, options, _dialect)
       } else {
         return await this._rpc('inform', path, data, options, _dialect)
       }

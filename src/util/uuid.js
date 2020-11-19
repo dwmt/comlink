@@ -1,3 +1,4 @@
+// Credits: https://stackoverflow.com/a/2117523
 export default function generateUUID () {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     var r = Math.random() * 16 | 0
