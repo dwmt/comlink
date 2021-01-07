@@ -1,4 +1,4 @@
-import axios from 'axios'
+const axios = require.resolve('axios')
 import generateUUID from './util/uuid'
 const WebSocket = require('isomorphic-ws')
 
@@ -495,6 +495,23 @@ export default class Client {
       throw new Error(err.response.data.message)
     }
   }
+  async _rpcMethod (type = 'request', path, data, options, _dialect) {
+    const channel = this._channels[options.channel || this._deafultRPCChannel]
+    const dialect = this._dialects[_dialect || this._defaultDialect]
+    const rpcConfig = channel.rpc
+
+    if (!dialect.type || dialect.type !== 'http') {
+      throw new Error('ComlinkDialect is not supported on HTTPChannel yet!')
+    }
+    if (dialect.type === 'http' && type !== 'request') {
+      throw new Error('HTTPDialect only supports request now!')
+    }
+
+    if (!rpcConfig.dialects.includes(dialect.name)) {
+      throw new Error(`The channel ${channel.name} not supports the ${dialect.name} dialect`)
+    }
+    return dialect.handler(path, data, options)
+  }
   async request (path, data, options = {}, _dialect) {
     const channelName = options.channel || this._deafultRPCChannel
     const channel = this._channels[channelName]
@@ -505,6 +522,8 @@ export default class Client {
     try {
       if (channel.type === 'http') {
         return await this._rpcHTTP('request', path, data, options, _dialect)
+      } else if(channel.type === 'method') {
+        return await this._rpcMethod('request', path, data, options, _dialect)
       } else {
         return await this._rpc('request', path, data, options, _dialect)
       }
@@ -526,7 +545,9 @@ export default class Client {
     try {
       if (channel.type === 'http') {
         return await this._rpc('inform', path, data, options, _dialect)
-      } else {
+      } else if(channel.type === 'method') {
+        return await this._rpcMethod('inform', path, data, options, _dialect)
+      }  else {
         return await this._rpc('inform', path, data, options, _dialect)
       }
     } catch (err) {
