@@ -508,15 +508,17 @@ export default class Client {
   async request (path, data, options = {}, _dialect) {
     const channelName = options.channel || this._deafultRPCChannel
     const channel = this._channels[channelName]
+    const dialect = this._dialects[_dialect || this._defaultDialect]
     const loader = getLoader(channel, options)
     const errorHandler = options.onError || channel.onError
 
     const loaderID = loader.work()
     try {
+      if(dialect.type === 'method') {
+        return await this._rpcMethod('request', path, data, options, _dialect)
+      } 
       if (channel.type === 'http') {
         return await this._rpcHTTP('request', path, data, options, _dialect)
-      } else if(channel.type === 'method') {
-        return await this._rpcMethod('request', path, data, options, _dialect)
       } else {
         return await this._rpc('request', path, data, options, _dialect)
       }
