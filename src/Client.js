@@ -1,4 +1,4 @@
-const axios = require.resolve('axios')
+const axios = require('axios')
 import generateUUID from './util/uuid'
 const WebSocket = require('isomorphic-ws')
 
