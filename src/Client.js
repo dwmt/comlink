@@ -500,13 +500,6 @@ export default class Client {
     const dialect = this._dialects[_dialect || this._defaultDialect]
     const rpcConfig = channel.rpc
 
-    if (!dialect.type || dialect.type !== 'http') {
-      throw new Error('ComlinkDialect is not supported on HTTPChannel yet!')
-    }
-    if (dialect.type === 'http' && type !== 'request') {
-      throw new Error('HTTPDialect only supports request now!')
-    }
-
     if (!rpcConfig.dialects.includes(dialect.name)) {
       throw new Error(`The channel ${channel.name} not supports the ${dialect.name} dialect`)
     }
